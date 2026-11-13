@@ -18,10 +18,11 @@ jobs:
 
       # Expects the project's modrinth ID in gradle.properties as modrinthId
       # and the MODRINTH_TOKEN secret in the repo settings.
-      - name: Build and publish
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          arguments: build modrinth
+
+      - name: Build and publish
+        run: ./gradlew build modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
 
