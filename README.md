@@ -1,5 +1,7 @@
 # PS4Control
 
+[![Build](https://github.com/MikhailStakhov/ps4control/actions/workflows/build.yml/badge.svg)](https://github.com/MikhailStakhov/ps4control/actions/workflows/build.yml)
+
 A lightweight Fabric mod that adds PS4 (DualShock 4) / PS5 (DualSense) controller
 support to Minecraft Java Edition using **SDL's GameController API via LWJGL** —
 the *exact same* SDL library Minecraft 26.x already loads for its own windowing
@@ -69,6 +71,23 @@ empty for single-player use — it just grabs the first gamepad.)
   SDL queue), so it can't interfere with the game's own input handling.
 - Steam Input can double-map gamepads — if buttons act twice, disable Steam Input
   for Minecraft.
+
+## Releasing a new version
+
+Every push to `main` is built by CI ([Actions](https://github.com/MikhailStakhov/ps4control/actions)).
+To publish a release to Modrinth + GitHub Releases in one step:
+
+1. Bump `mod_version` in `gradle.properties`, update `CHANGELOG.md`
+2. Commit, then tag and push:
+   ```
+   git tag v0.1.1
+   git push origin main --tags
+   ```
+3. CI builds with JDK 25, uploads to Modrinth (needs the `MODRINTH_TOKEN` secret
+   set in repo Settings → Secrets → Actions, and the Modrinth project ID in
+   `modrinthId` in `gradle.properties`), and creates a GitHub Release with the jar.
+
+For updating to a new Minecraft version, see [UPDATING.md](UPDATING.md).
 
 - Controllers must be connected via Bluetooth/USB **before** GLFW init for the
   gamepad database to map them; reconnects are handled automatically.
