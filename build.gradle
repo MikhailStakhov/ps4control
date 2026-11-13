@@ -9,8 +9,8 @@ plugins {
 
 // --- Modrinth upload ---
 modrinth {
-    token = hasProperty('modrinthToken') ? modrinthToken : (System.getenv('MODRINTH_TOKEN') ?: '')
-    projectId = hasProperty('modrinthId') ? modrinthId : ''   // e.g. 'ps4control'
+    token = (project.findProperty('modrinthToken') ?: System.getenv('MODRINTH_TOKEN') ?: '').toString()
+    projectId = (project.findProperty('modrinthId') ?: '').toString()   // e.g. 't4RFDfP1'
     versionNumber = project.mod_version
     versionType = 'release'
     uploadFile = jar
