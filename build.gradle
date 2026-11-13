@@ -1,0 +1,65 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.19.4'
+    // Modrinth publishing (gradlew modrinth). Token goes in ~/.gradle/gradle.properties:
+    //   modrinthToken=mrp_xxxxxxxx
+    // Fill in modrinthId below AFTER creating the project on modrinth.com (it's the
+    // ID/slug shown in the project URL).
+    id 'com.modrinth.minotaur' version '2.+'
+}
+
+// --- Modrinth upload ---
+modrinth {
+    token = hasProperty('modrinthToken') ? modrinthToken : (System.getenv('MODRINTH_TOKEN') ?: '')
+    projectId = hasProperty('modrinthId') ? modrinthId : ''   // e.g. 'ps4control'
+    versionNumber = project.mod_version
+    versionType = 'release'
+    uploadFile = jar
+    gameVersions = [project.minecraft_version]
+    loaders = ['fabric']
+    changelog = file('CHANGELOG.md').exists() ? file('CHANGELOG.md').text : ''
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Minecraft 26.1+ ships unobfuscated — no mappings dependency needed.
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // Minecraft 26.x uses SDL (not GLFW) via LWJGL; natives ship with the game,
+    // we only need the bindings at compile time (+ natives for dev runs).
+    implementation "org.lwjgl:lwjgl-sdl:${project.lwjgl_version}"
+    runtimeOnly "org.lwjgl:lwjgl-sdl:${project.lwjgl_version}:natives-windows"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}

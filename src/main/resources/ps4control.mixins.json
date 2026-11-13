@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.ps4control.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "SDLEventHandlerMixin",
+    "KeyMappingAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

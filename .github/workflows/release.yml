@@ -1,0 +1,38 @@
+name: Release to Modrinth
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Expects the project's modrinth ID in gradle.properties as modrinthId
+      # and the MODRINTH_TOKEN secret in the repo settings.
+      - name: Build and publish
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          arguments: build modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps4control-release
+          path: build/libs/*.jar
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/libs/*.jar
+          body_path: CHANGELOG.md
