@@ -116,19 +116,37 @@ public final class ControllerManager {
     /** Refreshes state; returns the open gamepad handle, or 0 (rebinding attempted). */
     public static synchronized long poll() {
         if (boundPad != 0) {
-            // SDL_JoystickConnectionState: 0=Unknown, 1=Wired, 2=Wireless
-            int conn = SDLGamepad.SDL_GetGamepadConnectionState(boundPad);
-            if (conn == 1 || conn == 2) {
-                SDLGamepad.SDL_UpdateGamepads();
-                return boundPad;
+            SDLGamepad.SDL_UpdateGamepads();
+            // Periodic sanity check: is our device still in SDL's gamepad list?
+            // (Never rebind per-frame — SDL_GetGamepadConnectionState can report
+            // 0/"unknown" on some Windows driver paths even while connected,
+            // which caused an every-frame rebind storm in earlier versions.)
+            long now = System.currentTimeMillis();
+            if (now - lastDeviceCheck > 2000) {
+                lastDeviceCheck = now;
+                if (!isDevicePresent(boundId)) {
+                    Ps4ControlMod.LOG("Gamepad id " + boundId + " no longer present, rebinding");
+                    rebind();
+                }
             }
-            Ps4ControlMod.LOG("Gamepad disconnected (state " + conn + "), rebinding");
+            return boundPad;
         }
         rebind();
         if (boundPad != 0) {
             SDLGamepad.SDL_UpdateGamepads();
         }
         return boundPad;
+    }
+
+    private static long lastDeviceCheck;
+
+    private static boolean isDevicePresent(int deviceId) {
+        java.nio.IntBuffer ids = SDLGamepad.SDL_GetGamepads();
+        if (ids == null) return false;
+        for (int i = 0; i < ids.remaining(); i++) {
+            if (ids.get(i) == deviceId) return true;
+        }
+        return false;
     }
 
     public static List<String> listGamepads() {

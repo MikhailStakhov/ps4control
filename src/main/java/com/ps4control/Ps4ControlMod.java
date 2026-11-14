@@ -81,6 +81,14 @@ public class Ps4ControlMod implements ClientModInitializer {
                     ctx.getSource().sendFeedback(Component.literal("Controller lock cleared; using first gamepad: " + ControllerManager.boundDescription()));
                     return 1;
                 }))
+                .then(ClientCommands.literal("debug").executes(ctx -> {
+                    var cfg = Ps4Config.get();
+                    cfg.debugHud = !cfg.debugHud;
+                    Ps4Config.save();
+                    ctx.getSource().sendFeedback(Component.literal(
+                        "Debug HUD " + (cfg.debugHud ? "ON — look at the top-left corner of the screen" : "OFF")));
+                    return 1;
+                }))
                 .then(ClientCommands.literal("reload").executes(ctx -> {
                     Ps4Config.load();
                     ctx.getSource().sendFeedback(Component.literal("Config reloaded: " + Ps4Config.get().summary()));
