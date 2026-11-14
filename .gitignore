@@ -18,3 +18,4 @@ Thumbs.db
 
 # Local secrets — never commit tokens
 *.local.properties
+*.log
