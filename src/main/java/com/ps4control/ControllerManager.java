@@ -115,9 +115,16 @@ public final class ControllerManager {
 
     /** Refreshes state; returns the open gamepad handle, or 0 (rebinding attempted). */
     public static synchronized long poll() {
-        if (boundPad == 0 || SDLGamepad.SDL_GetGamepadConnectionState(boundPad) != 1) {
-            rebind();
+        if (boundPad != 0) {
+            // SDL_JoystickConnectionState: 0=Unknown, 1=Wired, 2=Wireless
+            int conn = SDLGamepad.SDL_GetGamepadConnectionState(boundPad);
+            if (conn == 1 || conn == 2) {
+                SDLGamepad.SDL_UpdateGamepads();
+                return boundPad;
+            }
+            Ps4ControlMod.LOG("Gamepad disconnected (state " + conn + "), rebinding");
         }
+        rebind();
         if (boundPad != 0) {
             SDLGamepad.SDL_UpdateGamepads();
         }

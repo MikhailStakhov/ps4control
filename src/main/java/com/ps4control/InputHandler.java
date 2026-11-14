@@ -26,6 +26,21 @@ public final class InputHandler {
 
     /** Called every frame. */
     public static void onFrame() {
+        try {
+            doFrame();
+        } catch (Throwable t) {
+            // never let controller input take the game down; log at most every 5 s
+            long now = System.currentTimeMillis();
+            if (now - lastErrorLog > 5000) {
+                lastErrorLog = now;
+                Ps4ControlMod.LOG("Input error: " + t);
+            }
+        }
+    }
+
+    private static long lastErrorLog;
+
+    private static void doFrame() {
         Minecraft mc = Minecraft.getInstance();
         // settings-menu key works anywhere (menu or gameplay)
         if (Ps4ControlMod.MENU_KEY.consumeClick()) {
@@ -97,6 +112,7 @@ public final class InputHandler {
     // ------------------------------------------------------------------ screens
 
     private static void handleScreen(Minecraft mc, Ps4Config cfg, long pad) {
+        long window = mc.getWindow().handle();
         // left stick moves the virtual cursor via MouseHandler.onMove — the same
         // path a physical mouse takes, so vanilla GUI hover logic just works.
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, cfg.deadzone);
@@ -106,7 +122,7 @@ public final class InputHandler {
             double dy = ly * cfg.cursorSpeed / 60.0;
             double nx = mc.mouseHandler.xpos() + dx;
             double ny = mc.mouseHandler.ypos() + dy;
-            mc.mouseHandler.onMove(0, nx, ny, dx, dy);
+            mc.mouseHandler.onMove(window, nx, ny, dx, dy);
         }
 
         // cross = left click, circle = right click (press on rising edge, release on falling)
@@ -126,9 +142,9 @@ public final class InputHandler {
         boolean was = prevButtons[idx];
         prevButtons[idx] = now;
         if (now && !was) {
-            mc.mouseHandler.onButton(0, new MouseButtonInfo(button, 0), 1);
+            mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(button, 0), 1);
         } else if (!now && was) {
-            mc.mouseHandler.onButton(0, new MouseButtonInfo(button, 0), 0);
+            mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(button, 0), 0);
         }
     }
 
