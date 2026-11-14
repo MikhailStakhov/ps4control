@@ -95,14 +95,20 @@ public final class InputHandler {
         if (edge(pad, "hotbarPrev")) changeSlot(mc, -1);
         if (edge(pad, "pause")) mc.pauseGame(true);
 
-        // --- camera: right stick. Entity.turn applies its own 0.15 scaling,
-        // so pass the raw sensitivity — do NOT pre-scale.
+        // --- camera: right stick. Framerate-independent: realtimeDeltaTicks is
+        // 1.0 at 20 fps, 0.5 at 40, 0.33 at 60 — sens*2.5*0.15*20 = °/sec.
+        // Entity.turn applies its own 0.15 scaling; do NOT pre-scale.
         double rx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_RIGHTX, cfg.deadzone);
         double ry = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_RIGHTY, cfg.deadzone);
         if (rx != 0 || ry != 0) {
-            double yaw = rx * cfg.lookSensitivity;
-            double pitch = (cfg.invertY ? -ry : ry) * cfg.lookSensitivity;
-            mc.player.turn(yaw, pitch);
+            double ft = mc.getDeltaTracker().getRealtimeDeltaTicks();
+            double look = cfg.lookSensitivity * ft * 2.5;
+            mc.player.turn(rx * look, (cfg.invertY ? -ry : ry) * look);
+        }
+
+        // Options/Start opens the pause menu — leave a game without the keyboard
+        if (edge(pad, "openMenu")) {
+            mc.pauseGame(true);
         }
     }
 
@@ -141,18 +147,14 @@ public final class InputHandler {
                 com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0, 0));
         }
 
-        // --- virtual cursor (fallback for clicking specific things like item slots)
+        // --- DS4 touchpad swipe = trackpad-style cursor (fast + precise)
+        touchpadCursor(mc, screen, pad);
+
+        // --- virtual cursor (left stick, fallback)
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, cfg.deadzone);
         double ly = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTY, cfg.deadzone);
         if (lx != 0 || ly != 0) {
-            double dx = lx * cfg.cursorSpeed / 60.0;
-            double dy = ly * cfg.cursorSpeed / 60.0;
-            double nx = clamp(mc.mouseHandler.xpos() + dx, 0, mc.getWindow().getWidth());
-            double ny = clamp(mc.mouseHandler.ypos() + dy, 0, mc.getWindow().getHeight());
-            mc.mouseHandler.onMove(window, nx, ny, 0, 0);
-            double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), nx);
-            double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), ny);
-            screen.mouseMoved(sx, sy);
+            moveCursor(mc, screen, lx * cfg.cursorSpeed / 60.0, ly * cfg.cursorSpeed / 60.0);
         }
 
         // Cross = left click; if nothing was under the cursor, activate the
@@ -164,6 +166,47 @@ public final class InputHandler {
 
     // left-stick flick detection for discrete focus movement (0=up,1=down,2=left,3=right)
     private static final boolean[] flickPrev = new boolean[4];
+
+    // DS4 touchpad finger tracking (previous finger position, -1 = not down)
+    private static final java.nio.ByteBuffer touchState = org.lwjgl.BufferUtils.createByteBuffer(1);
+    private static final java.nio.FloatBuffer touchX = org.lwjgl.BufferUtils.createFloatBuffer(1);
+    private static final java.nio.FloatBuffer touchY = org.lwjgl.BufferUtils.createFloatBuffer(1);
+    private static final java.nio.FloatBuffer touchPressure = org.lwjgl.BufferUtils.createFloatBuffer(1);
+    private static double touchPrevX = -1, touchPrevY = -1;
+
+    /** Moves the finger across the DualShock touchpad to slide the virtual cursor. */
+    private static void touchpadCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, long pad) {
+        try {
+            if (SDLGamepad.SDL_GetNumGamepadTouchpads(pad) <= 0) { touchPrevX = -1; return; }
+            touchState.clear(); touchX.clear(); touchY.clear(); touchPressure.clear();
+            boolean down = SDLGamepad.SDL_GetGamepadTouchpadFinger(pad, 0, 0, touchState, touchX, touchY, touchPressure);
+            if (down) {
+                double tx = touchX.get(0), ty = touchY.get(0);
+                if (touchPrevX >= 0) {
+                    // finger travels the pad in ~1.0 units; scale a bit past 1:1
+                    moveCursor(mc, screen,
+                        (tx - touchPrevX) * mc.getWindow().getWidth() * 2.2,
+                        (ty - touchPrevY) * mc.getWindow().getHeight() * 2.2);
+                }
+                touchPrevX = tx;
+                touchPrevY = ty;
+            } else {
+                touchPrevX = -1;
+            }
+        } catch (Throwable t) {
+            touchPrevX = -1;
+        }
+    }
+
+    private static void moveCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, double dx, double dy) {
+        long window = mc.getWindow().handle();
+        double nx = clamp(mc.mouseHandler.xpos() + dx, 0, mc.getWindow().getWidth());
+        double ny = clamp(mc.mouseHandler.ypos() + dy, 0, mc.getWindow().getHeight());
+        mc.mouseHandler.onMove(window, nx, ny, 0, 0);
+        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), nx);
+        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), ny);
+        screen.mouseMoved(sx, sy);
+    }
 
     private static boolean flick(long pad, int dir) {
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, 0.15);
@@ -196,9 +239,18 @@ public final class InputHandler {
         double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
         var info = new MouseButtonInfo(1, 0);
         var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
+        boolean inTextBox = screen.getFocused() instanceof net.minecraft.client.gui.components.EditBox;
         if (now) {
-            circleConsumed = screen.mouseClicked(event, false);
+            if (inTextBox) {
+                // Circle while typing = leave the text box / close the screen
+                circleConsumed = true;
+                screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                    com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 0, 0));
+            } else {
+                circleConsumed = screen.mouseClicked(event, false);
+            }
         } else {
+            if (inTextBox) return;
             screen.mouseReleased(event);
             if (!circleConsumed) {
                 screen.onClose();

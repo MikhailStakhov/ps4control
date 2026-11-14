@@ -51,6 +51,7 @@ public class Ps4Config {
         m.put("chat", "dpad_up");
         m.put("pause", "dpad_down");
         m.put("menu", "touchpad");
+        m.put("openMenu", "start");
         return m;
     }
 

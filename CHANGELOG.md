@@ -1,10 +1,10 @@
-# PS4Control 0.3.2
+# PS4Control 0.3.3
 
-**Bedrock-style menu navigation** (you asked, fellow console player):
-
-- **D-pad / left-stick flicks move focus** between buttons — vanilla's own
-  arrow-key traversal, so focus never gets "lost" in empty space
-- **Cross activates the focused button** (Enter-equivalent) when your cursor
-  click hits nothing — no more pixel-hunting
-- **Circle backs out** when a right-click hits nothing
-- Virtual cursor still available for clicking specific item slots / recipes
+- **DualShock touchpad is now a trackpad cursor** — swipe your finger across it
+  to zip the menu cursor around (Bedrock-style). Cross clicks at the cursor.
+- **Options (Start) button opens the pause menu** — leave a world without ever
+  touching the keyboard.
+- **Camera is framerate-independent** and should feel much faster; Sensitivity
+  slider (4-40) tunes it.
+- **Circle escapes text boxes** — fixes being stuck in the multiplayer search
+  field (and any other search/typing box).
