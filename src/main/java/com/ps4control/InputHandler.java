@@ -136,8 +136,10 @@ public final class InputHandler {
         if (screen != lastScreen) {
             lastScreen = screen;
             releaseAll(mc);
-            mc.mouseHandler.onMove(mc.getWindow().handle(),
-                mc.getWindow().getWidth() / 2.0, mc.getWindow().getHeight() / 2.0, 0, 0);
+            long w = mc.getWindow().handle();
+            double cx = mc.getWindow().getWidth() / 2.0, cy = mc.getWindow().getHeight() / 2.0;
+            org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(w, (float) cx, (float) cy);
+            mc.mouseHandler.onMove(w, cx, cy, 0, 0);
         }
 
         // Square toggles the inventory closed (same button opens and closes it)
@@ -232,6 +234,10 @@ public final class InputHandler {
         long window = mc.getWindow().handle();
         double nx = clamp(mc.mouseHandler.xpos() + dx, 0, mc.getWindow().getWidth());
         double ny = clamp(mc.mouseHandler.ypos() + dy, 0, mc.getWindow().getHeight());
+        // Warp the REAL OS cursor so the visible pointer matches our virtual
+        // one — before this, clicks landed where an invisible cursor was while
+        // the visible cursor never moved (the entire "clicking is broken" bug).
+        org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(window, (float) nx, (float) ny);
         mc.mouseHandler.onMove(window, nx, ny, 0, 0);
         double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), nx);
         double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), ny);

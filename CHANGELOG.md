@@ -1,13 +1,12 @@
-# PS4Control 0.3.5
+# PS4Control 0.3.6
 
-Consistency pass — one button, one job, everywhere:
+**Clicking now works — because you can finally SEE the cursor.**
 
-- **Options (Start) toggles the pause menu through vanilla's own Escape
-  handling** — opens it in-world, resumes in the pause menu, correct behavior
-  on both singleplayer and servers. No more frozen-world-no-menu.
-- **Square closes the inventory** (same button opens and closes it — Bedrock
-  toggle behavior).
-- **Cursor now starts centered** on every screen open, so Cross clicks are
-  predictable instead of landing wherever the mouse last was.
-- Held keys (sneak/sprint etc.) are released when a screen opens — no more
-  ghost-sneaking after closing a menu.
+The controller's virtual cursor moved internally, but the visible pointer on
+screen stayed wherever your physical mouse last was. Cross clicks landed at
+the invisible virtual position, so nothing seemed to happen. The real OS
+cursor is now warped to follow the virtual one every frame:
+
+- What you see IS what clicks — stick/touchpad moves the visible pointer
+- Cursor centers on screen open (visibly now)
+- Cross = click at the visible cursor; Circle = back; Options = pause menu
