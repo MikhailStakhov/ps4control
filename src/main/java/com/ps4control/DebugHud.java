@@ -30,6 +30,12 @@ public class DebugHud implements HudElement {
 
         if (pad == 0) {
             graphics.text(font, "[PS4Control] no controller bound", x, y, 0xFFFF6060);
+            y += 10;
+            // show raw joysticks so we can tell "no devices" from "no mapping"
+            java.nio.IntBuffer joys = org.lwjgl.sdl.SDLJoystick.SDL_GetJoysticks();
+            int count = joys == null ? -1 : joys.remaining();
+            graphics.text(font, "SDL joysticks visible to SDL: " + count
+                + (count > 0 ? " (present but no gamepad mapping — report to mod author)" : ""), x, y, 0xFFFFDD88);
             return;
         }
 

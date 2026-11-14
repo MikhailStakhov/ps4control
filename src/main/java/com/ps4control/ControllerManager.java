@@ -28,7 +28,20 @@ public final class ControllerManager {
     private ControllerManager() {}
 
     public static void init() {
-        // Nothing to do at init — SDL is already initialized by the game.
+        // CRITICAL: Minecraft only calls SDL_Init(SDL_INIT_VIDEO). The gamepad
+        // subsystem is never initialized, so SDL_GetGamepads() would always be
+        // empty. Initialize it ourselves (thread-safe: we're on the render
+        // thread at client init, same thread RenderSystem used).
+        if (org.lwjgl.sdl.SDLInit.SDL_WasInit(org.lwjgl.sdl.SDLInit.SDL_INIT_GAMEPAD) == 0) {
+            boolean ok = org.lwjgl.sdl.SDLInit.SDL_InitSubSystem(
+                org.lwjgl.sdl.SDLInit.SDL_INIT_GAMEPAD | org.lwjgl.sdl.SDLInit.SDL_INIT_JOYSTICK);
+            if (ok) {
+                Ps4ControlMod.LOG("SDL gamepad subsystem initialized");
+            } else {
+                String err = org.lwjgl.sdl.SDLError.SDL_GetError();
+                Ps4ControlMod.LOG("FAILED to init SDL gamepad subsystem: " + (err == null ? "?" : err));
+            }
+        }
         rebind();
     }
 
