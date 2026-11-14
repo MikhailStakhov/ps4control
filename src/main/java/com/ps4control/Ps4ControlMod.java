@@ -1,12 +1,23 @@
 package com.ps4control;
 
-import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 public class Ps4ControlMod implements ClientModInitializer {
+
+    public static final KeyMapping.Category CATEGORY =
+        KeyMapping.Category.register(Identifier.fromNamespaceAndPath("ps4control", "main"));
+
+    /** Opens the settings GUI. Unbound by default — bind it in Options > Controls. */
+    public static final KeyMapping MENU_KEY = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.ps4control.menu", InputConstants.UNKNOWN.getValue(), CATEGORY));
 
     @Override
     public void onInitializeClient() {
@@ -20,9 +31,22 @@ public class Ps4ControlMod implements ClientModInitializer {
         System.out.println("[PS4Control] " + msg);
     }
 
+    public static void openConfigScreen() {
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        mc.setScreenAndShow(new Ps4ControlConfigScreen());
+    }
+
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
             ClientCommands.literal("ps4control")
+                .executes(ctx -> {
+                    openConfigScreen();
+                    return 1;
+                })
+                .then(ClientCommands.literal("menu").executes(ctx -> {
+                    openConfigScreen();
+                    return 1;
+                }))
                 .then(ClientCommands.literal("status").executes(ctx -> {
                     ctx.getSource().sendFeedback(Component.literal(
                         "PS4Control: " + ControllerManager.describe()
@@ -37,9 +61,9 @@ public class Ps4ControlMod implements ClientModInitializer {
                     return 1;
                 }))
                 .then(ClientCommands.literal("bind")
-                    .then(ClientCommands.argument("guid", com.mojang.brigadier.arguments.StringArgumentType.string())
+                    .then(ClientCommands.argument("guid", StringArgumentType.string())
                     .executes(ctx -> {
-                        String guid = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "guid");
+                        String guid = StringArgumentType.getString(ctx, "guid");
                         Ps4Config.get().lockToJoystickGuid = guid;
                         Ps4Config.save();
                         ControllerManager.rebind();

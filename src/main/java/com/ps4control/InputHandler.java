@@ -27,6 +27,11 @@ public final class InputHandler {
     /** Called every frame. */
     public static void onFrame() {
         Minecraft mc = Minecraft.getInstance();
+        // settings-menu key works anywhere (menu or gameplay)
+        if (Ps4ControlMod.MENU_KEY.consumeClick()) {
+            Ps4ControlMod.openConfigScreen();
+            return;
+        }
         Ps4Config cfg = Ps4Config.get();
         if (!cfg.enabled || mc.player == null && mc.gui.screen() == null) {
             return;

@@ -50,6 +50,18 @@ Give each instance a copy of this mod, then lock each instance to its own contro
 Instances will then ignore each other's controllers. (Leave `lockToJoystickGuid`
 empty for single-player use — it just grabs the first gamepad.)
 
+## Settings GUI
+
+Run `/ps4control` (or `/ps4control menu`) in-game, or bind **"Open PS4Control
+menu"** in Options → Controls → Key Mappings → PS4Control. The GUI has:
+
+- **Controller picker** — cycles Auto / each connected pad. With two controllers
+  plugged in, pick the right one here (press buttons and watch the live readout
+  to tell the pads apart)
+- Look sensitivity, cursor speed and deadzone sliders
+- Enable / invert-Y toggles
+- Live input panel (sticks, buttons, triggers of the bound pad)
+
 ## Config (`config/ps4control.json`)
 
 - `enabled` — master switch
