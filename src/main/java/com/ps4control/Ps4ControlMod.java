@@ -6,6 +6,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -19,11 +20,14 @@ public class Ps4ControlMod implements ClientModInitializer {
     public static final KeyMapping MENU_KEY = KeyMappingHelper.registerKeyMapping(
         new KeyMapping("key.ps4control.menu", InputConstants.UNKNOWN.getValue(), CATEGORY));
 
+    private static final Identifier DEBUG_HUD_ID = Identifier.fromNamespaceAndPath("ps4control", "debug");
+
     @Override
     public void onInitializeClient() {
         Ps4Config.load();
         ControllerManager.init();
         registerCommands();
+        HudElementRegistry.addLast(DEBUG_HUD_ID, new DebugHud());
         LOG("PS4Control loaded (SDL gamepad backend). " + ControllerManager.describe());
     }
 

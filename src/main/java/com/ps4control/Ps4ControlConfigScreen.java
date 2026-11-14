@@ -81,9 +81,18 @@ public class Ps4ControlConfigScreen extends Screen {
             v -> cfg.cursorSpeed = Math.round(v)));
 
         row += gap;
-        // Row 4: deadzone
+        // Row 4: deadzone + debug HUD toggle
         addRenderableWidget(slider(left, row, w, "Deadzone %", cfg.deadzone * 100.0, 5.0, 40.0,
             v -> cfg.deadzone = round2(v / 100.0)));
+
+        CycleButton<Boolean> debugBtn = addRenderableWidget(CycleButton.onOffBuilder(cfg.debugHud)
+            .displayOnlyValue()
+            .create(Component.literal("Debug HUD: "), (cb, value) -> { cfg.debugHud = value; save(); }));
+        debugBtn.setX(col2);
+        debugBtn.setY(row);
+        debugBtn.setWidth(w);
+        debugBtn.setTooltip(Tooltip.create(Component.literal(
+            "Shows every raw button/axis the controller sends, top-left. Press the touchpad / PS button and watch which 'RAW' number lights up.")));
 
         // Done button
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())

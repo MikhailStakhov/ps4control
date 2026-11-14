@@ -30,6 +30,8 @@ public class Ps4Config {
     public double cursorSpeed = 450.0;
     public double deadzone = 0.15;
     public boolean invertY = false;
+    /** Show on-screen raw button/axis readout (DebugHud) for diagnosing button mappings. */
+    public boolean debugHud = false;
 
     /** action name -> GLFW button name (see Bindings class for the vocabulary). */
     public Map<String, String> bindings = defaultBindings();
