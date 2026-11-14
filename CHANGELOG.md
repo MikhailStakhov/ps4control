@@ -1,12 +1,11 @@
-# PS4Control 0.3.6
+# PS4Control 0.3.7
 
-**Clicking now works — because you can finally SEE the cursor.**
+**Fixes "the white selected thing doesn't react to any button":**
 
-The controller's virtual cursor moved internally, but the visible pointer on
-screen stayed wherever your physical mouse last was. Cross clicks landed at
-the invisible virtual position, so nothing seemed to happen. The real OS
-cursor is now warped to follow the virtual one every frame:
-
-- What you see IS what clicks — stick/touchpad moves the visible pointer
-- Cursor centers on screen open (visibly now)
-- Cross = click at the visible cursor; Circle = back; Options = pause menu
+- Synthetic key events filled only vanilla's scancode slot. Focus navigation
+  reads the scancode (so the highlight moved), but button activation checks the
+  keycode slot — which was zero, so Enter-on-focused-widget silently failed.
+  Both slots are now filled: Cross activates the focused server/world/button
+  (Bedrock-style), falling back to a cursor click when nothing is focused.
+- Cross priority changed: focused control first, cursor click second — matches
+  how console UIs confirm selections.

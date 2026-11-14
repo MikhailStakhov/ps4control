@@ -151,20 +151,16 @@ public final class InputHandler {
         // --- Bedrock-style focus navigation: D-pad and left-stick flicks move
         // focus (vanilla arrow-key traversal), Cross activates, Circle backs out.
         if (edge(pad, "dpad_up") || flick(pad, 0)) {
-            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                com.mojang.blaze3d.platform.InputConstants.KEY_UP, 0, 0));
+            screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_UP));
         }
         if (edge(pad, "dpad_down") || flick(pad, 1)) {
-            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                com.mojang.blaze3d.platform.InputConstants.KEY_DOWN, 0, 0));
+            screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_DOWN));
         }
         if (edge(pad, "dpad_left") || flick(pad, 2)) {
-            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                com.mojang.blaze3d.platform.InputConstants.KEY_LEFT, 0, 0));
+            screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_LEFT));
         }
         if (edge(pad, "dpad_right") || flick(pad, 3)) {
-            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0, 0));
+            screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT));
         }
 
         // --- DS4 touchpad swipe = trackpad-style cursor (fast + precise)
@@ -270,8 +266,7 @@ public final class InputHandler {
         boolean now = rawDown(pad, "sneak");
         boolean was = prevButtons[idx];
         if (now && !was) {
-            boolean handled = screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 0, 0));
+            boolean handled = screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE));
             if (!handled && mc.gui.screen() == screen) {
                 screen.onClose();
             }
@@ -296,14 +291,25 @@ public final class InputHandler {
         var info = new MouseButtonInfo(0, 0);
         var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
         if (now) {
-            boolean consumed = screen.mouseClicked(event, false);
-            if (!consumed) {
-                screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                    com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+            // Bedrock-style: activate the FOCUSED control first (server/world
+            // list entries, highlighted buttons); fall back to clicking at the
+            // cursor when nothing has focus.
+            boolean handled = screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN));
+            if (!handled) {
+                screen.mouseClicked(event, false);
             }
         } else {
             screen.mouseReleased(event);
         }
+    }
+
+    /**
+     * Vanilla builds KeyEvent(scancode, keycode, modifiers) — widgets check the
+     * keycode slot while focus navigation reads the scancode slot. Set BOTH to
+     * the same key so every consumer matches.
+     */
+    private static net.minecraft.client.input.KeyEvent keyEvent(int key) {
+        return new net.minecraft.client.input.KeyEvent(key, key, 0);
     }
 
     /** Emulates a mouse press/release pair, delivered directly to the screen. */
