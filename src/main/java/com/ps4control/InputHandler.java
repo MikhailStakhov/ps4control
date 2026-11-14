@@ -47,11 +47,16 @@ public final class InputHandler {
             Ps4ControlMod.openConfigScreen();
             return;
         }
+        // gamepad button shortcut (default: touchpad) — works anywhere too
+        long pad = ControllerManager.poll();
+        if (pad != 0 && edge(pad, "menu")) {
+            Ps4ControlMod.openConfigScreen();
+            return;
+        }
         Ps4Config cfg = Ps4Config.get();
         if (!cfg.enabled || mc.player == null && mc.gui.screen() == null) {
             return;
         }
-        long pad = ControllerManager.poll();
         if (pad == 0) {
             releaseAll(mc);
             return;

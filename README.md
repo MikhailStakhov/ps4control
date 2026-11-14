@@ -34,6 +34,7 @@ cannot happen here.
 | R3 | Toggle perspective (F5) |
 | D-pad Up | Chat |
 | D-pad Down | Pause / close menu |
+| Touchpad button | Open PS4Control settings menu |
 | Left stick in menus | Move virtual cursor |
 
 ## Split-screen setup (mc-splitscreen)
