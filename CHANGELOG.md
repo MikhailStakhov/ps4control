@@ -1,14 +1,13 @@
-# PS4Control 0.3.4
+# PS4Control 0.3.5
 
-Menu controls simplified to pure Bedrock mapping:
+Consistency pass — one button, one job, everywhere:
 
-- **Circle = Back, unconditionally.** It is no longer a right-click — it sends
-  Escape through vanilla's close handling, which finally makes leaving the
-  inventory work (container screens consume clicks on empty space, so the old
-  "unconsumed click = back" trick could never fire there).
-- **Options (Start) shows the real pause menu** (setScreen(PauseScreen)),
-  not just the frozen world — works on multiplayer servers too.
-- **Cursor is now a real mouse-style pointer**: left stick drives a smoothed,
-  accelerating velocity (no more per-frame jerk); top speed raised to 900 px/s
-  (Cursor Speed slider, up to 2000).
-- Touchpad swipe still available alongside.
+- **Options (Start) toggles the pause menu through vanilla's own Escape
+  handling** — opens it in-world, resumes in the pause menu, correct behavior
+  on both singleplayer and servers. No more frozen-world-no-menu.
+- **Square closes the inventory** (same button opens and closes it — Bedrock
+  toggle behavior).
+- **Cursor now starts centered** on every screen open, so Cross clicks are
+  predictable instead of landing wherever the mouse last was.
+- Held keys (sneak/sprint etc.) are released when a screen opens — no more
+  ghost-sneaking after closing a menu.

@@ -53,6 +53,16 @@ public final class InputHandler {
             Ps4ControlMod.openConfigScreen();
             return;
         }
+        // Options/Start = vanilla Escape. In-world it opens the pause menu with
+        // all of vanilla's pause logic (SP pause vs MP menu); in the pause menu
+        // it resumes. Open + close with the same button, exactly like Bedrock.
+        if (pad != 0 && edge(pad, "openMenu")) {
+            var esc = new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE,
+                com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 0);
+            mc.keyboardHandler.keyPress(mc.getWindow().handle(), 0, esc);
+            return;
+        }
         Ps4Config cfg = Ps4Config.get();
         if (!cfg.enabled || mc.player == null && mc.gui.screen() == null) {
             return;
@@ -93,7 +103,6 @@ public final class InputHandler {
 
         if (edge(pad, "hotbarNext")) changeSlot(mc, 1);
         if (edge(pad, "hotbarPrev")) changeSlot(mc, -1);
-        if (edge(pad, "pause")) mc.pauseGame(true);
 
         // --- camera: right stick. Framerate-independent: realtimeDeltaTicks is
         // 1.0 at 20 fps, 0.5 at 40, 0.33 at 60 — sens*2.5*0.15*20 = °/sec.
@@ -104,12 +113,6 @@ public final class InputHandler {
             double ft = mc.getDeltaTracker().getRealtimeDeltaTicks();
             double look = cfg.lookSensitivity * ft * 2.5;
             mc.player.turn(rx * look, (cfg.invertY ? -ry : ry) * look);
-        }
-
-        // Options/Start opens the pause menu — leave a game without the keyboard.
-        // (mc.pauseGame alone doesn't show the menu on multiplayer servers.)
-        if (edge(pad, "openMenu") && mc.gui.screen() == null) {
-            mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(false));
         }
     }
 
@@ -126,8 +129,22 @@ public final class InputHandler {
 
     private static void handleScreen(Minecraft mc, Ps4Config cfg, long pad) {
         var screen = mc.gui.screen();
-        if (screen == null) return;
-        long window = mc.getWindow().handle();
+        if (screen == null) { lastScreen = null; return; }
+
+        // on screen change: release held keys (no ghost-sneak/walk on close)
+        // and center the cursor so Cross-clicks are predictable
+        if (screen != lastScreen) {
+            lastScreen = screen;
+            releaseAll(mc);
+            mc.mouseHandler.onMove(mc.getWindow().handle(),
+                mc.getWindow().getWidth() / 2.0, mc.getWindow().getHeight() / 2.0, 0, 0);
+        }
+
+        // Square toggles the inventory closed (same button opens and closes it)
+        if (edge(pad, "inventory") && screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+            screen.onClose();
+            return;
+        }
 
         // --- Bedrock-style focus navigation: D-pad and left-stick flicks move
         // focus (vanilla arrow-key traversal), Cross activates, Circle backs out.
@@ -183,6 +200,9 @@ public final class InputHandler {
 
     // mouse-like cursor velocity (px/s)
     private static double cursorVelX, cursorVelY;
+
+    // last screen seen, for open/close transitions
+    private static net.minecraft.client.gui.screens.Screen lastScreen;
 
     /** Moves the finger across the DualShock touchpad to slide the virtual cursor. */
     private static void touchpadCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, long pad) {
