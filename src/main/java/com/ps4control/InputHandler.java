@@ -117,43 +117,62 @@ public final class InputHandler {
     // ------------------------------------------------------------------ screens
 
     private static void handleScreen(Minecraft mc, Ps4Config cfg, long pad) {
+        var screen = mc.gui.screen();
+        if (screen == null) return;
         long window = mc.getWindow().handle();
-        // left stick moves the virtual cursor via MouseHandler.onMove — the same
-        // path a physical mouse takes, so vanilla GUI hover logic just works.
+
+        // left stick moves the virtual cursor. We update MouseHandler's absolute
+        // position AND call screen.mouseMoved directly: vanilla's accumulated-
+        // movement path is gated on isWindowActive(), which would break the
+        // unfocused instance in split-screen.
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, cfg.deadzone);
         double ly = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTY, cfg.deadzone);
         if (lx != 0 || ly != 0) {
             double dx = lx * cfg.cursorSpeed / 60.0;
             double dy = ly * cfg.cursorSpeed / 60.0;
-            double nx = mc.mouseHandler.xpos() + dx;
-            double ny = mc.mouseHandler.ypos() + dy;
-            mc.mouseHandler.onMove(window, nx, ny, dx, dy);
+            double nx = clamp(mc.mouseHandler.xpos() + dx, 0, mc.getWindow().getWidth());
+            double ny = clamp(mc.mouseHandler.ypos() + dy, 0, mc.getWindow().getHeight());
+            mc.mouseHandler.onMove(window, nx, ny, 0, 0);
+            double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), nx);
+            double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), ny);
+            screen.mouseMoved(sx, sy);
         }
 
-        // cross = left click, circle = right click (press on rising edge, release on falling)
-        clickPair(mc, pad, "jump", 0);
-        clickPair(mc, pad, "sneak", 1);
+        // cross = left click, circle = right click — delivered straight to the
+        // screen with scaled coordinates
+        clickScreen(mc, screen, pad, "jump", 0);
+        clickScreen(mc, screen, pad, "sneak", 1);
 
         // dpad_down closes most screens (convenience "back")
-        if (edge(pad, "pause") && mc.gui.screen() != null) {
-            mc.gui.screen().onClose();
+        if (edge(pad, "pause")) {
+            screen.onClose();
         }
     }
 
-    /** Emulates a mouse press/release pair for a gamepad action. */
-    private static void clickPair(Minecraft mc, long pad, String action, int button) {
+    /** Emulates a mouse press/release pair, delivered directly to the screen. */
+    private static void clickScreen(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
+                                    long pad, String action, int button) {
         int idx = index(action);
         boolean now = rawDown(pad, action);
         boolean was = prevButtons[idx];
         prevButtons[idx] = now;
-        if (now && !was) {
-            mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(button, 0), 1);
-        } else if (!now && was) {
-            mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(button, 0), 0);
+        if (now == was) return;
+
+        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
+        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
+        var info = new MouseButtonInfo(button, 0);
+        if (now) {
+            screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(sx, sy, info), false);
+        } else {
+            screen.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(sx, sy, info));
         }
     }
 
     // ------------------------------------------------------------------ helpers
+
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
+    }
 
     /** SDL axis values are S16; convert to [-1,1] with deadzone + rescale. */
     private static double axis(long pad, int axis, double deadzone) {
