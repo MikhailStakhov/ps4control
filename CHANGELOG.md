@@ -1,10 +1,13 @@
-# PS4Control 0.3.0
+# PS4Control 0.3.1
 
-**The big one: controllers were never detected at all.**
+Gameplay fixes after controllers came online:
 
-- Minecraft only initializes SDL's VIDEO subsystem — the GAMEPAD subsystem is
-  never started, so SDL reported zero gamepads on every machine. The mod now
-  initializes SDL_INIT_GAMEPAD + SDL_INIT_JOYSTICK itself at startup. This is
-  the root cause of every "controller does nothing" report so far.
-- Debug HUD now shows how many raw joysticks SDL sees even when no gamepad is
-  bound (distinguishes "no devices" from "no mapping").
+- **Camera speed fixed** — sensitivity was double-scaled (mod × vanilla), making
+  the right stick crawl. Now full-tilt ≈ 160°/s at default sensitivity; adjust
+  "Sensitivity" in the settings GUI to taste.
+- **R2 (mine/attack) and L2 (use/place) now work** — triggers are SDL *axes*,
+  not buttons; they were silently never registering.
+- **Circle closes menus** console-style: right-click in the inventory as before,
+  but if nothing under the cursor consumes it, Circle backs out of the screen.
+  D-pad Down still closes instantly.
+- Fixed an internal edge-detection slot collision between Cross and the triggers.

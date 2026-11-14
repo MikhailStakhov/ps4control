@@ -95,12 +95,13 @@ public final class InputHandler {
         if (edge(pad, "hotbarPrev")) changeSlot(mc, -1);
         if (edge(pad, "pause")) mc.pauseGame(true);
 
-        // --- camera: right stick
+        // --- camera: right stick. Entity.turn applies its own 0.15 scaling,
+        // so pass the raw sensitivity — do NOT pre-scale.
         double rx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_RIGHTX, cfg.deadzone);
         double ry = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_RIGHTY, cfg.deadzone);
         if (rx != 0 || ry != 0) {
-            double yaw = rx * cfg.lookSensitivity * 0.15;
-            double pitch = (cfg.invertY ? -ry : ry) * cfg.lookSensitivity * 0.15;
+            double yaw = rx * cfg.lookSensitivity;
+            double pitch = (cfg.invertY ? -ry : ry) * cfg.lookSensitivity;
             mc.player.turn(yaw, pitch);
         }
     }
@@ -141,13 +142,43 @@ public final class InputHandler {
         // cross = left click, circle = right click — delivered straight to the
         // screen with scaled coordinates
         clickScreen(mc, screen, pad, "jump", 0);
-        clickScreen(mc, screen, pad, "sneak", 1);
+        circleClickOrBack(mc, screen, pad);
 
         // dpad_down closes most screens (convenience "back")
         if (edge(pad, "pause")) {
             screen.onClose();
         }
     }
+
+    /**
+     * Circle: right-click on press; if NO gui element consumed the click
+     * (mouseClicked returned false), treat Circle as "back" and close the
+     * screen on release — console-style menu behavior.
+     */
+    private static void circleClickOrBack(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
+                                          long pad) {
+        int idx = index("sneak");
+        boolean now = rawDown(pad, "sneak");
+        boolean was = prevButtons[idx];
+        prevButtons[idx] = now;
+        if (now == was) return;
+
+        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
+        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
+        var info = new MouseButtonInfo(1, 0);
+        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
+        if (now) {
+            circleConsumed = screen.mouseClicked(event, false);
+        } else {
+            screen.mouseReleased(event);
+            if (!circleConsumed) {
+                screen.onClose();
+            }
+            circleConsumed = true;
+        }
+    }
+
+    private static boolean circleConsumed = true;
 
     /** Emulates a mouse press/release pair, delivered directly to the screen. */
     private static void clickScreen(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
@@ -161,10 +192,11 @@ public final class InputHandler {
         double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
         double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
         var info = new MouseButtonInfo(button, 0);
+        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
         if (now) {
-            screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(sx, sy, info), false);
+            screen.mouseClicked(event, false);
         } else {
-            screen.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(sx, sy, info));
+            screen.mouseReleased(event);
         }
     }
 
@@ -183,7 +215,15 @@ public final class InputHandler {
     }
 
     private static boolean rawDown(long pad, String action) {
-        int code = Bindings.code(Ps4Config.get().bindings.getOrDefault(action, ""));
+        String binding = Ps4Config.get().bindings.getOrDefault(action, "");
+        // triggers are AXES in SDL, not buttons
+        if (binding.equals("l2")) {
+            return SDLGamepad.SDL_GetGamepadAxis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 5000;
+        }
+        if (binding.equals("r2")) {
+            return SDLGamepad.SDL_GetGamepadAxis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 5000;
+        }
+        int code = Bindings.code(binding);
         return code >= 0 && SDLGamepad.SDL_GetGamepadButton(pad, code);
     }
 
@@ -197,8 +237,11 @@ public final class InputHandler {
     }
 
     private static int index(String action) {
-        int code = Bindings.code(Ps4Config.get().bindings.getOrDefault(action, ""));
-        return Math.max(0, Math.min(BTN_COUNT - 1, code));
+        String binding = Ps4Config.get().bindings.getOrDefault(action, "");
+        if (binding.equals("l2")) return BTN_COUNT - 2; // triggers aren't buttons; own slots
+        if (binding.equals("r2")) return BTN_COUNT - 1;
+        int code = Bindings.code(binding);
+        return Math.max(0, Math.min(BTN_COUNT - 3, code));
     }
 
     /** Sets a key down while held; releases when we were the one holding it. */
