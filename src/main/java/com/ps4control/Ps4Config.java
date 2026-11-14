@@ -27,7 +27,7 @@ public class Ps4Config {
     public String lockToJoystickGuid = "";
 
     public double lookSensitivity = 18.0;
-    public double cursorSpeed = 450.0;
+    public double cursorSpeed = 900.0;
     public double deadzone = 0.15;
     public boolean invertY = false;
     /** Show on-screen raw button/axis readout (DebugHud) for diagnosing button mappings. */

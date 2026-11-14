@@ -106,9 +106,10 @@ public final class InputHandler {
             mc.player.turn(rx * look, (cfg.invertY ? -ry : ry) * look);
         }
 
-        // Options/Start opens the pause menu — leave a game without the keyboard
-        if (edge(pad, "openMenu")) {
-            mc.pauseGame(true);
+        // Options/Start opens the pause menu — leave a game without the keyboard.
+        // (mc.pauseGame alone doesn't show the menu on multiplayer servers.)
+        if (edge(pad, "openMenu") && mc.gui.screen() == null) {
+            mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(false));
         }
     }
 
@@ -150,11 +151,17 @@ public final class InputHandler {
         // --- DS4 touchpad swipe = trackpad-style cursor (fast + precise)
         touchpadCursor(mc, screen, pad);
 
-        // --- virtual cursor (left stick, fallback)
+        // --- virtual cursor: mouse-like stick movement (acceleration + glide).
+        // cursorSpeed is the top speed in px/s at full deflection.
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, cfg.deadzone);
         double ly = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTY, cfg.deadzone);
-        if (lx != 0 || ly != 0) {
-            moveCursor(mc, screen, lx * cfg.cursorSpeed / 60.0, ly * cfg.cursorSpeed / 60.0);
+        float ftTicks = mc.getDeltaTracker().getRealtimeDeltaTicks();
+        double seconds = ftTicks / 20.0;
+        double follow = Math.min(1.0, seconds * 14.0); // how fast velocity approaches target
+        cursorVelX += (lx * cfg.cursorSpeed - cursorVelX) * follow;
+        cursorVelY += (ly * cfg.cursorSpeed - cursorVelY) * follow;
+        if (Math.abs(cursorVelX) > 0.5 || Math.abs(cursorVelY) > 0.5) {
+            moveCursor(mc, screen, cursorVelX * seconds, cursorVelY * seconds);
         }
 
         // Cross = left click; if nothing was under the cursor, activate the
@@ -173,6 +180,9 @@ public final class InputHandler {
     private static final java.nio.FloatBuffer touchY = org.lwjgl.BufferUtils.createFloatBuffer(1);
     private static final java.nio.FloatBuffer touchPressure = org.lwjgl.BufferUtils.createFloatBuffer(1);
     private static double touchPrevX = -1, touchPrevY = -1;
+
+    // mouse-like cursor velocity (px/s)
+    private static double cursorVelX, cursorVelY;
 
     /** Moves the finger across the DualShock touchpad to slide the virtual cursor. */
     private static void touchpadCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, long pad) {
@@ -223,43 +233,25 @@ public final class InputHandler {
     }
 
     /**
-     * Circle: right-click on press; if NO gui element consumed the click
-     * (mouseClicked returned false), treat Circle as "back" and close the
-     * screen on release — console-style menu behavior.
+     * Circle = BACK, always (Bedrock-style). Sends Escape to the screen so it
+     * closes through vanilla's own close handling; falls back to onClose().
+     * Container screens consume clicks on empty space, so "unconsumed click"
+     * detection cannot work — Circle must never be a right-click.
      */
     private static void circleClickOrBack(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
                                           long pad) {
         int idx = index("sneak");
         boolean now = rawDown(pad, "sneak");
         boolean was = prevButtons[idx];
-        prevButtons[idx] = now;
-        if (now == was) return;
-
-        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
-        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
-        var info = new MouseButtonInfo(1, 0);
-        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
-        boolean inTextBox = screen.getFocused() instanceof net.minecraft.client.gui.components.EditBox;
-        if (now) {
-            if (inTextBox) {
-                // Circle while typing = leave the text box / close the screen
-                circleConsumed = true;
-                screen.keyPressed(new net.minecraft.client.input.KeyEvent(
-                    com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 0, 0));
-            } else {
-                circleConsumed = screen.mouseClicked(event, false);
-            }
-        } else {
-            if (inTextBox) return;
-            screen.mouseReleased(event);
-            if (!circleConsumed) {
+        if (now && !was) {
+            boolean handled = screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 0, 0));
+            if (!handled && mc.gui.screen() == screen) {
                 screen.onClose();
             }
-            circleConsumed = true;
         }
+        prevButtons[idx] = now;
     }
-
-    private static boolean circleConsumed = true;
 
     /**
      * Cross: left click at the cursor; if no element consumed the click,
