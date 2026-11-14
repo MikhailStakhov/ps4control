@@ -122,10 +122,26 @@ public final class InputHandler {
         if (screen == null) return;
         long window = mc.getWindow().handle();
 
-        // left stick moves the virtual cursor. We update MouseHandler's absolute
-        // position AND call screen.mouseMoved directly: vanilla's accumulated-
-        // movement path is gated on isWindowActive(), which would break the
-        // unfocused instance in split-screen.
+        // --- Bedrock-style focus navigation: D-pad and left-stick flicks move
+        // focus (vanilla arrow-key traversal), Cross activates, Circle backs out.
+        if (edge(pad, "dpad_up") || flick(pad, 0)) {
+            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_UP, 0, 0));
+        }
+        if (edge(pad, "dpad_down") || flick(pad, 1)) {
+            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_DOWN, 0, 0));
+        }
+        if (edge(pad, "dpad_left") || flick(pad, 2)) {
+            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_LEFT, 0, 0));
+        }
+        if (edge(pad, "dpad_right") || flick(pad, 3)) {
+            screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0, 0));
+        }
+
+        // --- virtual cursor (fallback for clicking specific things like item slots)
         double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, cfg.deadzone);
         double ly = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTY, cfg.deadzone);
         if (lx != 0 || ly != 0) {
@@ -139,15 +155,28 @@ public final class InputHandler {
             screen.mouseMoved(sx, sy);
         }
 
-        // cross = left click, circle = right click — delivered straight to the
-        // screen with scaled coordinates
-        clickScreen(mc, screen, pad, "jump", 0);
+        // Cross = left click; if nothing was under the cursor, activate the
+        // focused control (Enter-equivalent) — Bedrock-style confirm
+        crossClickOrActivate(mc, screen, pad);
+        // Circle = right click, or back if nothing consumed it
         circleClickOrBack(mc, screen, pad);
+    }
 
-        // dpad_down closes most screens (convenience "back")
-        if (edge(pad, "pause")) {
-            screen.onClose();
-        }
+    // left-stick flick detection for discrete focus movement (0=up,1=down,2=left,3=right)
+    private static final boolean[] flickPrev = new boolean[4];
+
+    private static boolean flick(long pad, int dir) {
+        double lx = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTX, 0.15);
+        double ly = axis(pad, SDLGamepad.SDL_GAMEPAD_AXIS_LEFTY, 0.15);
+        boolean pressed = switch (dir) {
+            case 0 -> ly < -0.75;
+            case 1 -> ly > 0.75;
+            case 2 -> lx < -0.75;
+            default -> lx > 0.75;
+        };
+        boolean rising = pressed && !flickPrev[dir];
+        flickPrev[dir] = pressed;
+        return rising;
     }
 
     /**
@@ -179,6 +208,33 @@ public final class InputHandler {
     }
 
     private static boolean circleConsumed = true;
+
+    /**
+     * Cross: left click at the cursor; if no element consumed the click,
+     * send Enter to the screen so the FOCUSED control activates — console-style.
+     */
+    private static void crossClickOrActivate(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
+                                             long pad) {
+        int idx = index("jump");
+        boolean now = rawDown(pad, "jump");
+        boolean was = prevButtons[idx];
+        prevButtons[idx] = now;
+        if (now == was) return;
+
+        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
+        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
+        var info = new MouseButtonInfo(0, 0);
+        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
+        if (now) {
+            boolean consumed = screen.mouseClicked(event, false);
+            if (!consumed) {
+                screen.keyPressed(new net.minecraft.client.input.KeyEvent(
+                    com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+            }
+        } else {
+            screen.mouseReleased(event);
+        }
+    }
 
     /** Emulates a mouse press/release pair, delivered directly to the screen. */
     private static void clickScreen(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,

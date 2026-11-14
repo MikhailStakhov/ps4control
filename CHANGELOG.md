@@ -1,13 +1,10 @@
-# PS4Control 0.3.1
+# PS4Control 0.3.2
 
-Gameplay fixes after controllers came online:
+**Bedrock-style menu navigation** (you asked, fellow console player):
 
-- **Camera speed fixed** — sensitivity was double-scaled (mod × vanilla), making
-  the right stick crawl. Now full-tilt ≈ 160°/s at default sensitivity; adjust
-  "Sensitivity" in the settings GUI to taste.
-- **R2 (mine/attack) and L2 (use/place) now work** — triggers are SDL *axes*,
-  not buttons; they were silently never registering.
-- **Circle closes menus** console-style: right-click in the inventory as before,
-  but if nothing under the cursor consumes it, Circle backs out of the screen.
-  D-pad Down still closes instantly.
-- Fixed an internal edge-detection slot collision between Cross and the triggers.
+- **D-pad / left-stick flicks move focus** between buttons — vanilla's own
+  arrow-key traversal, so focus never gets "lost" in empty space
+- **Cross activates the focused button** (Enter-equivalent) when your cursor
+  click hits nothing — no more pixel-hunting
+- **Circle backs out** when a right-click hits nothing
+- Virtual cursor still available for clicking specific item slots / recipes
