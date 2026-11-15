@@ -1,11 +1,9 @@
-# PS4Control 0.3.7
+# PS4Control 0.3.8
 
-**Fixes "the white selected thing doesn't react to any button":**
-
-- Synthetic key events filled only vanilla's scancode slot. Focus navigation
-  reads the scancode (so the highlight moved), but button activation checks the
-  keycode slot — which was zero, so Enter-on-focused-widget silently failed.
-  Both slots are now filled: Cross activates the focused server/world/button
-  (Bedrock-style), falling back to a cursor click when nothing is focused.
-- Cross priority changed: focused control first, cursor click second — matches
-  how console UIs confirm selections.
+- **Touchpad tap = click.** Swipe to aim the cursor, tap the pad to click at
+  the pointer — like a laptop trackpad. Two-finger tap = right click.
+- **Cross = click at the cursor first** (the visible pointer), Enter-on-focused
+  only as fallback when the click hits empty space.
+- Settings menu moved from touchpad-click to the **Share button** ("back"),
+  since touchpad taps are now clicks. Existing configs: set `"menu": "back"`
+  in config/ps4control.json, or delete the file to regenerate.

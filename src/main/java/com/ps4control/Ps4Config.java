@@ -50,7 +50,7 @@ public class Ps4Config {
         m.put("perspective", "r3");
         m.put("chat", "dpad_up");
         m.put("pause", "dpad_down");
-        m.put("menu", "touchpad");
+        m.put("menu", "back"); // Share button; touchpad click is used for tap-to-click
         m.put("openMenu", "start");
         return m;
     }

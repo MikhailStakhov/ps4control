@@ -208,22 +208,55 @@ public final class InputHandler {
             if (SDLGamepad.SDL_GetNumGamepadTouchpads(pad) <= 0) { touchPrevX = -1; return; }
             touchState.clear(); touchX.clear(); touchY.clear(); touchPressure.clear();
             boolean down = SDLGamepad.SDL_GetGamepadTouchpadFinger(pad, 0, 0, touchState, touchX, touchY, touchPressure);
+            // two-finger tap = right click
+            boolean secondFinger = SDLGamepad.SDL_GetNumGamepadTouchpadFingers(pad, 0) > 1
+                && fingerDown(pad, 0, 1);
             if (down) {
+                long now = System.currentTimeMillis();
                 double tx = touchX.get(0), ty = touchY.get(0);
                 if (touchPrevX >= 0) {
+                    double dx = tx - touchPrevX, dy = ty - touchPrevY;
                     // finger travels the pad in ~1.0 units; scale a bit past 1:1
                     moveCursor(mc, screen,
-                        (tx - touchPrevX) * mc.getWindow().getWidth() * 2.2,
-                        (ty - touchPrevY) * mc.getWindow().getHeight() * 2.2);
+                        dx * mc.getWindow().getWidth() * 2.2,
+                        dy * mc.getWindow().getHeight() * 2.2);
+                    touchMove += Math.abs(dx) + Math.abs(dy);
+                } else {
+                    touchDownTime = now;
+                    touchMove = 0;
                 }
                 touchPrevX = tx;
                 touchPrevY = ty;
-            } else {
+            } else if (touchPrevX >= 0) {
+                // finger lifted: was it a TAP (short + little movement) => click
+                long held = System.currentTimeMillis() - touchDownTime;
+                if (held < 350 && touchMove < 0.08) {
+                    int button = secondFinger || (SDLGamepad.SDL_GetNumGamepadTouchpadFingers(pad, 0) > 1 && fingerDown(pad, 0, 1)) ? 1 : 0;
+                    clickAtCursor(mc, screen, button);
+                }
                 touchPrevX = -1;
             }
         } catch (Throwable t) {
             touchPrevX = -1;
         }
+    }
+
+    private static long touchDownTime;
+    private static double touchMove;
+
+    private static boolean fingerDown(long pad, int touchpad, int finger) {
+        touchState.clear(); touchX.clear(); touchY.clear(); touchPressure.clear();
+        return SDLGamepad.SDL_GetGamepadTouchpadFinger(pad, touchpad, finger, touchState, touchX, touchY, touchPressure);
+    }
+
+    /** Clicks (press + release) the given mouse button at the current cursor position. */
+    private static void clickAtCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, int button) {
+        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
+        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
+        var info = new MouseButtonInfo(button, 0);
+        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
+        screen.mouseClicked(event, false);
+        screen.mouseReleased(event);
     }
 
     private static void moveCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, double dx, double dy) {
@@ -291,12 +324,11 @@ public final class InputHandler {
         var info = new MouseButtonInfo(0, 0);
         var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
         if (now) {
-            // Bedrock-style: activate the FOCUSED control first (server/world
-            // list entries, highlighted buttons); fall back to clicking at the
-            // cursor when nothing has focus.
-            boolean handled = screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN));
-            if (!handled) {
-                screen.mouseClicked(event, false);
+            // click at the (visible, warped) cursor first; if nothing consumed
+            // it, activate the focused control via Enter
+            boolean consumed = screen.mouseClicked(event, false);
+            if (!consumed) {
+                screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN));
             }
         } else {
             screen.mouseReleased(event);
