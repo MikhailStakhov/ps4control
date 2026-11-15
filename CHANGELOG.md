@@ -1,9 +1,8 @@
-# PS4Control 0.3.8
+# PS4Control 0.3.9
 
-- **Touchpad tap = click.** Swipe to aim the cursor, tap the pad to click at
-  the pointer — like a laptop trackpad. Two-finger tap = right click.
-- **Cross = click at the cursor first** (the visible pointer), Enter-on-focused
-  only as fallback when the click hits empty space.
-- Settings menu moved from touchpad-click to the **Share button** ("back"),
-  since touchpad taps are now clicks. Existing configs: set `"menu": "back"`
-  in config/ps4control.json, or delete the file to regenerate.
+**Clicks are delivered through vanilla's own click pipeline again.**
+
+Earlier releases stopped using MouseHandler.onButton (the path that made menu
+clicks work in 0.3.3) in favor of calling screen.mouseClicked directly —
+which silently misses vanilla plumbing around clicks. Cross and touchpad-tap
+clicks now go through onButton again, at the visible warped cursor position.

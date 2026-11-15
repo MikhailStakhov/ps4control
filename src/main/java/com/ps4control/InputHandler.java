@@ -253,10 +253,13 @@ public final class InputHandler {
     private static void clickAtCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, int button) {
         double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
         double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
+        // Route through MouseHandler.onButton — vanilla's own click pipeline.
+        // (Direct screen.mouseClicked calls miss vanilla plumbing and were the
+        // "clicking doesn't work" regression; onButton is the path that worked.)
+        long window = mc.getWindow().handle();
         var info = new MouseButtonInfo(button, 0);
-        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
-        screen.mouseClicked(event, false);
-        screen.mouseReleased(event);
+        mc.mouseHandler.onButton(window, info, 1);
+        mc.mouseHandler.onButton(window, info, 0);
     }
 
     private static void moveCursor(Minecraft mc, net.minecraft.client.gui.screens.Screen screen, double dx, double dy) {
@@ -319,20 +322,10 @@ public final class InputHandler {
         prevButtons[idx] = now;
         if (now == was) return;
 
-        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
-        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
-        var info = new MouseButtonInfo(0, 0);
-        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
-        if (now) {
-            // click at the (visible, warped) cursor first; if nothing consumed
-            // it, activate the focused control via Enter
-            boolean consumed = screen.mouseClicked(event, false);
-            if (!consumed) {
-                screen.keyPressed(keyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN));
-            }
-        } else {
-            screen.mouseReleased(event);
-        }
+        // Cross = left click at the (visible, warped) cursor, delivered through
+        // MouseHandler.onButton — vanilla's own click pipeline, the path proven
+        // to work. onButton forwards to the open screen with scaled coords.
+        mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(0, 0), now ? 1 : 0);
     }
 
     /**
@@ -342,26 +335,6 @@ public final class InputHandler {
      */
     private static net.minecraft.client.input.KeyEvent keyEvent(int key) {
         return new net.minecraft.client.input.KeyEvent(key, key, 0);
-    }
-
-    /** Emulates a mouse press/release pair, delivered directly to the screen. */
-    private static void clickScreen(Minecraft mc, net.minecraft.client.gui.screens.Screen screen,
-                                    long pad, String action, int button) {
-        int idx = index(action);
-        boolean now = rawDown(pad, action);
-        boolean was = prevButtons[idx];
-        prevButtons[idx] = now;
-        if (now == was) return;
-
-        double sx = net.minecraft.client.MouseHandler.getScaledXPos(mc.getWindow(), mc.mouseHandler.xpos());
-        double sy = net.minecraft.client.MouseHandler.getScaledYPos(mc.getWindow(), mc.mouseHandler.ypos());
-        var info = new MouseButtonInfo(button, 0);
-        var event = new net.minecraft.client.input.MouseButtonEvent(sx, sy, info);
-        if (now) {
-            screen.mouseClicked(event, false);
-        } else {
-            screen.mouseReleased(event);
-        }
     }
 
     // ------------------------------------------------------------------ helpers
